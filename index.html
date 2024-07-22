@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>models4ry</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #FFA500; /* Bright orange background */
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            width: 200px;
+        }
+        .control-button {
+            background-color: transparent;
+            border: 2px solid white;
+            color: white;
+            padding: 10px;
+            cursor: pointer;
+        }
+        .head {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            justify-content: center;
+            width: 200px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="head"><p>⋆｡‧˚ʚ♡ɞ˚‧｡⋆</p></div>
+    <div class="controls">
+        <button class="control-button" onclick="previousModel()">Previous Model</button>
+        <button class="control-button" onclick="nextModel()">Next Model</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        let scene, camera, renderer, modelIndex = 0;
+        const models = ['head01BALD.glb', 'head01HAIR.glb', 'head02BALD.glb', 'head02HAIR.glb', 'head02GLASSES.glb', 'head03BALD.glb', 'head03HAIR.glb', 'HEAD04.glb', 'head04BODY.glb', 'head05BALD.glb', 'head05HAIR.glb']; // Add your model paths here
+        let currentModel;
+
+        let isDragging = false;
+        let previousMousePosition = {
+            x: 0,
+            y: 0
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xFFA500); // Set scene background to bright orange
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 4;
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            loadModel(models[modelIndex]);
+
+            const ambientLight = new THREE.AmbientLight(0xD0D0D0, 1);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            animate();
+
+            window.addEventListener('mousedown', onMouseDown, false);
+            window.addEventListener('mouseup', onMouseUp, false);
+            window.addEventListener('mousemove', onMouseMove, false);
+
+            window.addEventListener('touchstart', onTouchStart, false);
+            window.addEventListener('touchend', onTouchEnd, false);
+            window.addEventListener('touchmove', onTouchMove, false);
+        }
+
+        function loadModel(modelPath) {
+            const loader = new THREE.GLTFLoader();
+            loader.load(modelPath, (gltf) => {
+                if (currentModel) {
+                    scene.remove(currentModel);
+                }
+                currentModel = gltf.scene;
+                currentModel.rotation.y = Math.PI / -2; // Rotate model 90 degrees
+                scene.add(currentModel);
+            });
+        }
+
+        function nextModel() {
+            modelIndex = (modelIndex + 1) % models.length;
+            loadModel(models[modelIndex]);
+        }
+
+        function previousModel() {
+            modelIndex = (modelIndex - 1 + models.length) % models.length;
+            loadModel(models[modelIndex]);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        function onMouseDown(event) {
+            isDragging = true;
+        }
+
+        function onMouseUp(event) {
+            isDragging = false;
+        }
+
+        function onMouseMove(event) {
+            const deltaMove = {
+                x: event.offsetX - previousMousePosition.x,
+                y: event.offsetY - previousMousePosition.y
+            };
+
+            if (isDragging) {
+                const deltaRotationQuaternion = new THREE.Quaternion()
+                    .setFromEuler(new THREE.Euler(
+                        0,
+                        toRadians(deltaMove.x * 1),
+                        0,
+                        'XYZ'
+                    ));
+
+                currentModel.quaternion.multiplyQuaternions(deltaRotationQuaternion, currentModel.quaternion);
+            }
+
+            previousMousePosition = {
+                x: event.offsetX,
+                y: event.offsetY
+            };
+        }
+
+        function onTouchStart(event) {
+            isDragging = true;
+            previousMousePosition = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY
+            };
+        }
+
+        function onTouchEnd(event) {
+            isDragging = false;
+        }
+
+        function onTouchMove(event) {
+            const deltaMove = {
+                x: event.touches[0].clientX - previousMousePosition.x,
+                y: event.touches[0].clientY - previousMousePosition.y
+            };
+
+            if (isDragging) {
+                const deltaRotationQuaternion = new THREE.Quaternion()
+                    .setFromEuler(new THREE.Euler(
+                        0,
+                        toRadians(deltaMove.x * 1),
+                        0,
+                        'XYZ'
+                    ));
+
+                currentModel.quaternion.multiplyQuaternions(deltaRotationQuaternion, currentModel.quaternion);
+            }
+
+            previousMousePosition = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY
+            };
+        }
+
+        function toRadians(angle) {
+            return angle * (Math.PI / 180);
+        }
+
+        init();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
